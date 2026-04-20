@@ -1,0 +1,5 @@
+streamlit
+numpy
+requests
+python-dotenv
+matplotlib
