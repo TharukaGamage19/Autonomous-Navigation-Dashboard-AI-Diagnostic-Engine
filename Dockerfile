@@ -1,5 +1,10 @@
 FROM python:3.9-slim
 
+# Patch the underlying Debian OS to fix the CRITICAL OpenSSL vulnerabilities
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # 1. Set the working directory
 WORKDIR /app
 
@@ -7,7 +12,6 @@ WORKDIR /app
 RUN useradd -m -u 10014 appuser
 
 # 3. EXPLICITLY copy the requirements file first 
-# (If this fails, the file is definitely missing or named wrong in GitHub)
 COPY requirements.txt .
 
 # 4. Install dependencies
