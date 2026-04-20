@@ -1,90 +1,61 @@
-# nav_algorithm.py
-import math
 import heapq
 
-GRID_SIZE = 6 
+def get_heuristic(a, b):
+    """Calculate Manhattan distance between two points."""
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-def node_to_xy(node):
-    """Convert node number to (x, y) coordinates."""
-    x = node % GRID_SIZE
-    y = node // GRID_SIZE
-    return (x, y)
-
-def xy_to_node(x, y):
-    """Convert (x, y) coordinates back to node number."""
-    return y * GRID_SIZE + x
-
-def get_neighbors(node, barriers):
-    """Return valid 8-directional neighbors avoiding barriers."""
-    x, y = node_to_xy(node)
-    neighbors = []
-    for dy in [-1, 0, 1]:
-        for dx in [-1, 0, 1]:
-            if dx == 0 and dy == 0:
-                continue
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE:
-                neighbor = xy_to_node(nx, ny)
-                if neighbor not in barriers:
-                    neighbors.append(neighbor)
-    return sorted(neighbors)
-
-def chebyshev_distance(node_a, node_b):
-    """Chebyshev distance: max(|dx|, |dy|) - Good for 8-way movement."""
-    x1, y1 = node_to_xy(node_a)
-    x2, y2 = node_to_xy(node_b)
-    return max(abs(x2 - x1), abs(y2 - y1))
-
-def euclidean_distance(node_a, node_b):
-    """Exact edge cost calculation."""
-    x1, y1 = node_to_xy(node_a)
-    x2, y2 = node_to_xy(node_b)
-    return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-
-def a_star_search(start, goal, barriers):
+def calculate_path(grid, start, end):
     """
-    A* Algorithm simulating ROS 2 Global Path Planning.
-    Returns: path, visited_nodes
+    A* Pathfinding Algorithm.
+    grid: 2D list where 0 is open space, 1 is an obstacle.
+    start: Tuple (row, col)
+    end: Tuple (row, col)
+    Returns a list of tuples representing the path, or None if blocked.
     """
-    # pq entries: (f_cost, node, current_g_cost)
-    pq = [(chebyshev_distance(start, goal), start, 0.0)]
+    rows = len(grid)
+    cols = len(grid[0])
     
-    # Track the exact cost from start to a given node
-    g_costs = {start: 0.0}
-    parent = {start: None}
-    visited_log = []
+    # Priority queue to explore the lowest cost nodes first
+    open_set = []
+    heapq.heappush(open_set, (0, start))
     
-    found = False
-
-    while pq:
-        f_cost, current, current_g = heapq.heappop(pq)
+    # Dictionary to reconstruct the path later
+    came_from = {}
+    
+    # Cost from start to the current node
+    g_score = {start: 0}
+    
+    while open_set:
+        _, current = heapq.heappop(open_set)
         
-        # Skip if we found a strictly better path to this node already
-        if current in g_costs and current_g > g_costs[current]:
-            continue
+        # If we reached the end, reconstruct the path backwards
+        if current == end:
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            path.reverse()
+            return path
             
-        visited_log.append(current)
-
-        if current == goal:
-            found = True
-            break
-
-        for neighbor in get_neighbors(current, barriers):
-            # Calculate exact cost to neighbor
-            tentative_g_cost = current_g + euclidean_distance(current, neighbor)
+        # Explore neighbors: Right, Down, Left, Up
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            neighbor = (current[0] + dx, current[1] + dy)
             
-            if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
-                g_costs[neighbor] = tentative_g_cost
-                f_cost = tentative_g_cost + chebyshev_distance(neighbor, goal)
-                parent[neighbor] = current
-                heapq.heappush(pq, (f_cost, neighbor, tentative_g_cost))
-
-    final_path = []
-    if found:
-        node = goal
-        while node is not None:
-            final_path.append(node)
-            node = parent[node]
-        final_path.reverse()
-
-    return final_path, visited_log
+            # Ensure neighbor is within grid boundaries
+            if 0 <= neighbor[0] < rows and 0 <= neighbor[1] < cols:
+                # Ensure neighbor is not an obstacle (1)
+                if grid[neighbor[0]][neighbor[1]] == 1:
+                    continue 
+                    
+                # The distance between adjacent nodes is exactly 1
+                tentative_g_score = g_score[current] + 1
+                
+                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g_score
+                    # f_score = cost from start + estimated cost to end
+                    f_score = tentative_g_score + get_heuristic(neighbor, end)
+                    heapq.heappush(open_set, (f_score, neighbor))
+                    
+    return None # No valid path found
