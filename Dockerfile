@@ -15,7 +15,7 @@ RUN useradd -m -u 10014 appuser
 COPY requirements.txt .
 
 # 4. Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt
 
 # 5. Copy the rest of the application code
 COPY . .
